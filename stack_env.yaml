@@ -1,0 +1,32 @@
+parameters:
+  user_data: |
+    #!/bin/bash
+    yum install -y docker
+
+    cat <<EOT > /etc/docker/daemon.json
+    {
+      "storage-driver": "devicemapper",
+      "storage-opts": [
+        "dm.directlvm_device=/dev/sde"
+      ]
+    }
+    EOT
+
+
+    fdisk /dev/sdf <<EOF
+    n
+    p
+    1
+
+
+    w
+    EOF
+
+    mkdir /http_files/
+    mkfs.ext4 /dev/sdf1
+    echo "/dev/sdf1 /http_files/ ext4 defaults 0 0" >> /etc/fstab
+    mount /dev/sdf1 /http_files/
+
+    echo "assignment done!" >> /http_files/index.html
+    systemctl enable --now docker
+    docker run -dit -v /http_files/:/usr/local/apache2/htdocs -p 80:80 httpd
