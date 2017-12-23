@@ -99,12 +99,12 @@ resources:
       size: 4
       availability_zone: nova
 
-  volume_attachment:
+  volume_1_server_1_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
       volume_id: { get_resource: cinder_volume_1_server_1 }
       instance_uuid: { get_resource: server1 }
-      mountpoint: /dev/vde
+      mountpoint: /dev/vdb
 
   cinder_volume_2_server_1:
     type: OS::Cinder::Volume
@@ -112,12 +112,12 @@ resources:
       size: 1
       availability_zone: nova
 
-  volume_attachment:
+  volume_2_server_1_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
       volume_id: { get_resource: cinder_volume_2_server_1 }
       instance_uuid: { get_resource: server1 }
-      mountpoint: /dev/vdf
+      mountpoint: /dev/vdc
 
   cinder_volume_1_server_2:
     type: OS::Cinder::Volume
@@ -125,12 +125,12 @@ resources:
       size: 4
       availability_zone: nova
 
-  volume_attachment:
+  volume_1_server_2_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
       volume_id: { get_resource: cinder_volume_1_server_2 }
       instance_uuid: { get_resource: server2 }
-      mountpoint: /dev/vde
+      mountpoint: /dev/vdb
 
   cinder_volume_2_server_2:
     type: OS::Cinder::Volume
@@ -138,12 +138,12 @@ resources:
       size: 1
       availability_zone: nova
 
-  volume_attachment:
+  volume_2_server_2_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
       volume_id: { get_resource: cinder_volume_2_server_2 }
       instance_uuid: { get_resource: server2 }
-      mountpoint: /dev/vdf
+      mountpoint: /dev/vdc
 # END VOLUMES
 
   server2_port:

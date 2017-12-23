@@ -19,10 +19,6 @@ resources:
       name: { get_param: project_name }
       domain: default
       description: Redhat assignment project
-  role:
-    type: OS::Keystone::Role
-    properties:
-      name: { get_param: user_role }
   user:
     type: OS::Keystone::User
     properties:
@@ -32,9 +28,9 @@ resources:
       default_project: { get_resource: project }
       password: { get_param: project_user_passwd }
       roles:
-        - role: { get_resource: role}
+        - role: { get_param: user_role}
           project: { get_resource: project }
-# 
+#
 #
 # parameters:
 #   project_name: redhat-cloud-assignment

@@ -1,19 +1,20 @@
 parameters:
   user_data: |
     #!/bin/bash
+    echo 123 | passwd --stdin
     yum install -y docker
 
     cat <<EOT > /etc/docker/daemon.json
     {
       "storage-driver": "devicemapper",
       "storage-opts": [
-        "dm.directlvm_device=/dev/sde"
+        "dm.directlvm_device=/dev/vdb"
       ]
     }
     EOT
 
 
-    fdisk /dev/sdf <<EOF
+    fdisk /dev/vdc <<EOF
     n
     p
     1
@@ -23,9 +24,9 @@ parameters:
     EOF
 
     mkdir /http_files/
-    mkfs.ext4 /dev/sdf1
-    echo "/dev/sdf1 /http_files/ ext4 defaults 0 0" >> /etc/fstab
-    mount /dev/sdf1 /http_files/
+    mkfs.ext4 /dev/vdc1
+    echo "/dev/vdc1 /http_files/ ext4 defaults 0 0" >> /etc/fstab
+    mount /dev/vdc1 /http_files/
 
     echo "assignment done!" >> /http_files/index.html
     systemctl enable --now docker
