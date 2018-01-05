@@ -132,12 +132,13 @@ resources:
           networks:
                 - port: {get_resource: server1_port}
           user_data_format: RAW
-          user_data: {get_param: user_data}
-          block_device_mapping:
-                - device_name: vda
-                  volume_size: 10
- 
-         
+          #user_data: {get_param: user_data}
+          user_data:
+            str_replace:
+                template: {get_param: user_data}
+                params:
+                    "%vol1_id%": {get_resource: cinder_volume_1_server_1}
+                    "%vol2_id%": {get_resource: cinder_volume_2_server_1}
 
 # Server 2
   server2:
@@ -150,10 +151,14 @@ resources:
           networks:
                 - port: {get_resource: server2_port}
           user_data_format: RAW
-          user_data: {get_param: user_data}
-          block_device_mapping:
-                - device_name: vda
-                  volume_size: 10
+          #user_data: {get_param: user_data}
+          user_data:
+            str_replace:
+                template: {get_param: user_data}
+                params:
+                    "%vol1_id%": {get_resource: cinder_volume_1_server_2}
+                    "%vol2_id%": {get_resource: cinder_volume_2_server_2}
+
 
 # Volume 1 server 1
   cinder_volume_1_server_1:

@@ -2,14 +2,20 @@ parameters:
   user_data: |
     #!/bin/bash
     setenforce 0
+    vol1_id="%vol1_id%"
+    vol1_dev_symlink="/dev/disk/by-id/virtio-$(echo ${vol1_id} | cut -c -20)"
+    vol1_dev=$(readlink -f ${vol1_dev_symlink})
+    vol2_id="%vol2_id%"
+    vol2_dev_symlink="/dev/disk/by-id/virtio-$(echo ${vol2_id} | cut -c -20)"
+    vol2_dev=$(readlink -f ${vol2_dev_symlink})
     yum install -y yum-utils device-mapper-persistent-data lvm2
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum install -y docker-ce
 
     mkdir /etc/docker
-    echo '{"storage-driver": "devicemapper", "storage-opts": ["dm.directlvm_device=/dev/vdb"]}' > /etc/docker/daemon.json
+    echo {\"storage-driver\": \"devicemapper\", \"storage-opts\": [\"dm.directlvm_device=${vol1_dev}\"]} > /etc/docker/daemon.json
 
-    fdisk /dev/vdc <<EOF
+    fdisk $vol2_dev <<EOF
     n
     p
     1
@@ -19,10 +25,10 @@ parameters:
     EOF
 
     mkdir /http_files/
-    mkfs.ext4 /dev/vdc1
-    echo "/dev/vdc1 /http_files/ ext4 defaults 0 0" >> /etc/fstab
-    mount /dev/vdc1 /http_files/
+    mkfs.ext4 $vol2_dev
+    echo ${vol2_dev} /http_files/ ext4 defaults 0 0 >> /etc/fstab
+    mount $vol2_dev /http_files/
 
-    echo "All good!" >> /http_files/index.html
+    echo "Looking forward to joining the team!" >> /http_files/index.html
     systemctl enable --now docker
     docker run -dit -v /http_files/:/usr/local/apache2/htdocs -p 80:80 httpd
