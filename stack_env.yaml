@@ -1,19 +1,13 @@
 parameters:
   user_data: |
     #!/bin/bash
+    setenforce 0
     yum install -y yum-utils device-mapper-persistent-data lvm2
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     yum install -y docker-ce
 
-    cat <<EOT > /etc/docker/daemon.json
-    {
-      "storage-driver": "devicemapper",
-      "storage-opts": [
-        "dm.directlvm_device=/dev/vdb"
-      ]
-    }
-    EOT
-
+    mkdir /etc/docker
+    echo '{"storage-driver": "devicemapper", "storage-opts": ["dm.directlvm_device=/dev/vdb"]}' > /etc/docker/daemon.json
 
     fdisk /dev/vdc <<EOF
     n
@@ -29,6 +23,6 @@ parameters:
     echo "/dev/vdc1 /http_files/ ext4 defaults 0 0" >> /etc/fstab
     mount /dev/vdc1 /http_files/
 
-    echo "assignment done!" >> /http_files/index.html
+    echo "All good!" >> /http_files/index.html
     systemctl enable --now docker
     docker run -dit -v /http_files/:/usr/local/apache2/htdocs -p 80:80 httpd

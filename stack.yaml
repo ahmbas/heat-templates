@@ -1,46 +1,99 @@
 heat_template_version: 2013-05-23
 
-description: HOT template for two interconnected VMs with floating ips.
+description: HOT template for assignment stack.
 
 parameters:
     user_data:
       type: string
-      description: Server user_data
+      description: User data script to bootstrap servers
 
 resources:
 
+# External Public Netwrok
+  external_network:
+    type: OS::Neutron::ProviderNet
+    properties:
+      name: external_network
+      network_type: flat
+      physical_network: extnet
+      shared: true
+      router_external: true
+
+# Setting up the public subnet
+  public_subnet:
+        type: OS::Neutron::Subnet
+        properties:
+          network_id: {get_resource: external_network}
+          cidr:  172.24.4.0/24
+          gateway_ip: 172.24.4.1
+          enable_dhcp: False
+          allocation_pools:
+            - start: 172.24.4.2
+              end: 172.24.4.254
+
+# Router to connect the external network and internal network
+  router:
+    type: OS::Neutron::Router
+    properties:
+      name: router
+      external_gateway_info:
+        network: {get_resource: external_network}
+
+# Private network
   private_net:
         type: OS::Neutron::Net
         properties:
           name: internal_network
 
+# Private subnet
   private_subnet:
         type: OS::Neutron::Subnet
         properties:
-          network_id: { get_resource: private_net }
-          cidr: 172.16.2.0/24
-          gateway_ip: 172.16.2.1
+          network_id: {get_resource: private_net}
+          cidr: 10.0.2.0/24
+          gateway_ip: 10.0.2.1
+          dns_nameservers: [ "172.31.0.2"]
 
-  router1_interface:
+# Interface for router to connect to private network
+  router_private_interface:
         type: OS::Neutron::RouterInterface
         properties:
-          router_id: router1
-          subnet_id: { get_resource: private_subnet }
+          router_id: {get_resource: router}
+          subnet_id: {get_resource: private_subnet}
 
+# Server 1 port (NIC)
   server1_port:
         type: OS::Neutron::Port
         properties:
-          network_id: { get_resource: private_net }
+          network_id: {get_resource: private_net}
           security_groups: [ get_resource: server_security_group ]
           fixed_ips:
-                - subnet_id: { get_resource: private_subnet }
+                - subnet_id: {get_resource: private_subnet}
 
+# Assign server 1 a floating ip from external network
   server1_floating_ip:
         type: OS::Neutron::FloatingIP
         properties:
-          floating_network_id: external_network
-          port_id: { get_resource: server1_port }
+          floating_network_id: {get_resource: external_network}
+          port_id: {get_resource: server1_port}
 
+# Server 2 port (NIC)
+  server2_port:
+        type: OS::Neutron::Port
+        properties:
+          network_id: {get_resource: private_net}
+          security_groups: [ get_resource: server_security_group ]
+          fixed_ips:
+                - subnet_id: {get_resource: private_subnet}
+
+# Assign server 2 a floating ip from external network
+  server2_floating_ip:
+        type: OS::Neutron::FloatingIP
+        properties:
+          floating_network_id: {get_resource: external_network}
+          port_id: {get_resource: server2_port}
+
+# Security group to open ssh, http, https
   server_security_group:
     type: OS::Neutron::SecurityGroup
     properties:
@@ -65,47 +118,58 @@ resources:
     properties:
       container_format: bare
       disk_format: qcow2
-      name: Centos
-      location: http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1705.qcow2c
+      name: Centos 7
+      location: http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1711.qcow2c
 
-# START SERVERS
+# Server 1
   server1:
         type: OS::Nova::Server
         properties:
           name: Server1
-          image: { get_resource: centos_image }
-          flavor: m1.small
+          key_name: stack
+          image: {get_resource: centos_image}
+          flavor: m1.medium
           networks:
-                - port: { get_resource: server1_port }
+                - port: {get_resource: server1_port}
           user_data_format: RAW
           user_data: {get_param: user_data}
+          block_device_mapping:
+                - device_name: vda
+                  volume_size: 10
+ 
+         
 
+# Server 2
   server2:
         type: OS::Nova::Server
         properties:
           name: Server2
-          image: { get_resource: centos_image }
-          flavor: m1.small
+          key_name: stack
+          image: {get_resource: centos_image}
+          flavor: m1.medium
           networks:
-                - port: { get_resource: server2_port }
+                - port: {get_resource: server2_port}
           user_data_format: RAW
           user_data: {get_param: user_data}
-# END SERVERS
+          block_device_mapping:
+                - device_name: vda
+                  volume_size: 10
 
-# START VOLUMES
+# Volume 1 server 1
   cinder_volume_1_server_1:
     type: OS::Cinder::Volume
     properties:
-      size: 4
+      size: 1
       availability_zone: nova
 
   volume_1_server_1_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
-      volume_id: { get_resource: cinder_volume_1_server_1 }
-      instance_uuid: { get_resource: server1 }
+      volume_id: {get_resource: cinder_volume_1_server_1}
+      instance_uuid: {get_resource: server1}
       mountpoint: /dev/vdb
 
+# Volume 2 server 1
   cinder_volume_2_server_1:
     type: OS::Cinder::Volume
     properties:
@@ -115,23 +179,25 @@ resources:
   volume_2_server_1_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
-      volume_id: { get_resource: cinder_volume_2_server_1 }
-      instance_uuid: { get_resource: server1 }
+      volume_id: {get_resource: cinder_volume_2_server_1}
+      instance_uuid: {get_resource: server1}
       mountpoint: /dev/vdc
 
+# Volume 1 server 2
   cinder_volume_1_server_2:
     type: OS::Cinder::Volume
     properties:
-      size: 4
+      size: 1
       availability_zone: nova
 
   volume_1_server_2_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
-      volume_id: { get_resource: cinder_volume_1_server_2 }
-      instance_uuid: { get_resource: server2 }
+      volume_id: {get_resource: cinder_volume_1_server_2}
+      instance_uuid: {get_resource: server2}
       mountpoint: /dev/vdb
 
+# Volume 2 server 2
   cinder_volume_2_server_2:
     type: OS::Cinder::Volume
     properties:
@@ -141,35 +207,6 @@ resources:
   volume_2_server_2_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
-      volume_id: { get_resource: cinder_volume_2_server_2 }
-      instance_uuid: { get_resource: server2 }
+      volume_id: {get_resource: cinder_volume_2_server_2}
+      instance_uuid: {get_resource: server2}
       mountpoint: /dev/vdc
-# END VOLUMES
-
-  server2_port:
-        type: OS::Neutron::Port
-        properties:
-          network_id: { get_resource: private_net }
-          security_groups: [ get_resource: server_security_group ]
-          fixed_ips:
-                - subnet_id: { get_resource: private_subnet }
-
-  server2_floating_ip:
-        type: OS::Neutron::FloatingIP
-        properties:
-          floating_network_id: external_network
-          port_id: { get_resource: server2_port }
-
-outputs:
-  server1_private_ip:
-        description: Private IP address of server1
-        value: { get_attr: [ server1, first_address ] }
-  server1_public_ip:
-        description: Floating IP address of server1
-        value: { get_attr: [ server1_floating_ip, floating_ip_address ] }
-  server2_private_ip:
-        description: Private IP address of server2
-        value: { get_attr: [ server2, first_address ] }
-  server2_public_ip:
-        description: Floating IP address of server2
-        value: { get_attr: [ server2_floating_ip, floating_ip_address ] }
