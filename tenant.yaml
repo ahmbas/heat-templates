@@ -1,0 +1,11 @@
+heat_template_version: 2015-04-30
+
+description: Create a new assignment project.
+
+resources:
+  project:
+    type: OS::Keystone::Project
+    properties:
+      name: redhat-cloud-assignment
+      domain: default
+      description: Redhat assignment project
